@@ -48,7 +48,7 @@ class ColumnQdrantRepository:
         cache_key = cache_key_hash(tuple(embedding), score_threshold, limit)
 
         # 1. 查新鲜缓存
-        cached = caches.qdrant_column.get(cache_key)
+        cached = await caches.qdrant_column.get(cache_key)
         if cached is not None:
             return cached
 
@@ -59,11 +59,11 @@ class ColumnQdrantRepository:
                                        operation_name="Qdrant-query_points",
                                        circuit_breaker=self._cb)
             results = [ColumnInfo(**point.payload) for point in result.points]
-            caches.qdrant_column.set(cache_key, results)
+            await caches.qdrant_column.set(cache_key, results)
             return results
         except Exception as e:
             # 3. 外部服务失败，尝试返回过期缓存（Stale Cache 降级）
-            stale = caches.qdrant_column.get_stale(cache_key)
+            stale = await caches.qdrant_column.get_stale(cache_key)
             if stale is not None:
                 logger.warning(f"Qdrant 查询失败，使用过期缓存: {e}")
                 return stale

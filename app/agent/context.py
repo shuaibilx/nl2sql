@@ -2,6 +2,7 @@ from typing import TypedDict
 
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
+from app.core.cache_context import CacheScope
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -16,3 +17,4 @@ class DataAgentContext(TypedDict):
     metric_qdrant_repository: MetricQdrantRepository
     meta_mysql_repository: MetaMySQLRepository
     dw_mysql_repository: DWMySQLRepository
+    cache_scope: CacheScope

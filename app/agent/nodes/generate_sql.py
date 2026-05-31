@@ -31,7 +31,7 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
     }, sort_keys=True, allow_unicode=True)
     cache_key = hashlib.md5(cache_input.encode()).hexdigest()
 
-    cached = caches.generate_sql.get(cache_key)
+    cached = await caches.generate_sql.get(cache_key)
     if cached is not None:
         logger.info(f"SQL 缓存命中: {cached[:80]}...")
         writer({"type": "progress", "step": "生成SQL", "status": "cached"})
@@ -52,7 +52,7 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
         result = await call_with_fallback(prompt, output_parser, invoke_args,
                                           primary_llm=llm_flash, label="generate_sql")
 
-        caches.generate_sql.set(cache_key, result)
+        await caches.generate_sql.set(cache_key, result)
         writer({"type": "progress", "step": "生成SQL", "status": "success"})
         logger.info(f"生成的SQL: {result}")
         return {"sql": result}

@@ -9,6 +9,7 @@ from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from omegaconf import OmegaConf
 
 from app.conf.meta_config import MetaConfig
+from app.core.cache_registry import caches
 from app.core.log import logger
 from app.core.retry import retry_async  # [改进] 为 embedding 调用添加指数退避重试
 from app.entities.column_info import ColumnInfo
@@ -261,4 +262,5 @@ class MetaKnowledgeService:
             await self._save_metric_info_to_qdrant(metric_infos)
             logger.info("为指标信息建立向量索引")
 
+        await caches.clear_names(["meta_mysql", "qdrant_column", "qdrant_metric", "es_value", "generate_sql"])
         logger.info("元数据知识库构建完成")

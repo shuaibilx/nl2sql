@@ -64,6 +64,33 @@ class LLMConfig:
 
 
 @dataclass
+class CacheConfig:
+    backend: str
+    env: str
+    key_prefix: str
+    fail_fast: bool
+    stale_ttl_seconds: int
+    prompt_version: str
+    schema_version: str
+    embedding_model_version: str
+    index_version: str
+
+
+@dataclass
+class RedisConfig:
+    host: str
+    port: int
+    db: int
+    password: str
+    socket_timeout: float
+
+
+@dataclass
+class MonitoringConfig:
+    prometheus_enabled: bool
+
+
+@dataclass
 class AppConfig:
     logging: LoggingConfig
     db_meta: DBConfig
@@ -73,6 +100,9 @@ class AppConfig:
     es: ESConfig
     llm: LLMConfig
     llm_fallback: LLMConfig
+    cache: CacheConfig
+    redis: RedisConfig
+    monitoring: MonitoringConfig
 
 
 project_root = Path(__file__).parents[2]

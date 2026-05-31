@@ -18,7 +18,7 @@ from app.prompt.prompt_loader import load_prompt
 # [改进] LLM 结果缓存：相同查询的关键词扩展结果不变，maxsize=256 覆盖常见查询集，TTL=30分钟
 async def _call_llm_extend(query: str) -> dict:
     """调用 LLM 扩展关键词，结果会被缓存。主模型失败自动降级到备用模型"""
-    cached = caches.llm_expand.get(query)
+    cached = await caches.llm_expand.get(query)
     if cached is not None:
         return cached
     prompt = PromptTemplate(
@@ -28,7 +28,7 @@ async def _call_llm_extend(query: str) -> dict:
     output_parser = JsonOutputParser()
     result = await call_with_fallback(prompt, output_parser, {"query": query},
                                       primary_llm=llm_flash, label="expand_keywords")
-    caches.llm_expand.set(query, result)
+    await caches.llm_expand.set(query, result)
     return result
 
 

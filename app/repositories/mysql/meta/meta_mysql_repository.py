@@ -39,7 +39,7 @@ class MetaMySQLRepository:
 
     async def get_column_info_by_id(self, column_id: str) -> ColumnInfo | None:
         cache_key = f"column:{column_id}"
-        cached = caches.meta_mysql.get(cache_key)
+        cached = await caches.meta_mysql.get(cache_key)
         if cached is not None:
             return cached
         # [改进] 读操作加重试
@@ -47,13 +47,13 @@ class MetaMySQLRepository:
                                                            operation_name="MySQL-get_column_info_by_id")
         if result:
             entity = ColumnInfoMapper.to_entity(result)
-            caches.meta_mysql.set(cache_key, entity)
+            await caches.meta_mysql.set(cache_key, entity)
             return entity
         return None
 
     async def get_table_info_by_id(self, table_id: str) -> TableInfo | None:
         cache_key = f"table:{table_id}"
-        cached = caches.meta_mysql.get(cache_key)
+        cached = await caches.meta_mysql.get(cache_key)
         if cached is not None:
             return cached
         # [改进] 读操作加重试
@@ -61,13 +61,13 @@ class MetaMySQLRepository:
                                                           operation_name="MySQL-get_table_info_by_id")
         if result:
             entity = TableInfoMapper.to_entity(result)
-            caches.meta_mysql.set(cache_key, entity)
+            await caches.meta_mysql.set(cache_key, entity)
             return entity
         return None
 
     async def get_key_columns_by_table_id(self, table_id: str) -> list[ColumnInfo]:
         cache_key = f"key_cols:{table_id}"
-        cached = caches.meta_mysql.get(cache_key)
+        cached = await caches.meta_mysql.get(cache_key)
         if cached is not None:
             return cached
         sql = """
@@ -80,5 +80,5 @@ class MetaMySQLRepository:
         result = await retry_async(self.session.execute, text(sql), {"table_id": table_id},
                                    operation_name="MySQL-get_key_columns_by_table_id")
         entities = [ColumnInfo(**row) for row in result.mappings().fetchall()]
-        caches.meta_mysql.set(cache_key, entities)
+        await caches.meta_mysql.set(cache_key, entities)
         return entities

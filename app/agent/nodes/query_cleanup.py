@@ -16,7 +16,7 @@ from app.prompt.prompt_loader import load_prompt
 # [改进] LLM 清洗结果缓存：相同查询的清洗结果不变，maxsize=512，TTL=1小时
 async def _call_llm_cleanup(query: str) -> str:
     """调用 LLM 清洗查询，结果会被缓存"""
-    cached = caches.llm_cleanup.get(query)
+    cached = await caches.llm_cleanup.get(query)
     if cached is not None:
         return cached
     prompt = PromptTemplate(
@@ -26,7 +26,7 @@ async def _call_llm_cleanup(query: str) -> str:
     chain = prompt | llm_flash
     result = await chain.ainvoke({"query": query})
     cleaned = result.content.strip()
-    caches.llm_cleanup.set(query, cleaned)
+    await caches.llm_cleanup.set(query, cleaned)
     return cleaned
 
 

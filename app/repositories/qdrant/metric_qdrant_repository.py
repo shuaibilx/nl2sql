@@ -45,7 +45,7 @@ class MetricQdrantRepository:
     async def search(self, embedding: list[float], score_threshold: float = 0.6, limit: int = 5) -> list[MetricInfo]:
         cache_key = cache_key_hash(tuple(embedding), score_threshold, limit)
 
-        cached = caches.qdrant_metric.get(cache_key)
+        cached = await caches.qdrant_metric.get(cache_key)
         if cached is not None:
             return cached
 
@@ -55,10 +55,10 @@ class MetricQdrantRepository:
                                        operation_name="Qdrant-query_points",
                                        circuit_breaker=self._cb)
             results = [MetricInfo(**point.payload) for point in result.points]
-            caches.qdrant_metric.set(cache_key, results)
+            await caches.qdrant_metric.set(cache_key, results)
             return results
         except Exception as e:
-            stale = caches.qdrant_metric.get_stale(cache_key)
+            stale = await caches.qdrant_metric.get_stale(cache_key)
             if stale is not None:
                 logger.warning(f"Qdrant 查询失败，使用过期缓存: {e}")
                 return stale

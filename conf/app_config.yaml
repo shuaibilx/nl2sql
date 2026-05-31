@@ -49,3 +49,24 @@ llm_fallback:
   model_name: ${oc.env:LLM_FALLBACK_MODEL_NAME,deepseek-v4-flash}
   api_key: ${oc.env:LLM_FALLBACK_API_KEY,missing}
   base_url: ${oc.env:LLM_FALLBACK_BASE_URL,https://api.deepseek.com}
+
+cache:
+  backend: ${oc.env:CACHE_BACKEND,redis}
+  env: ${oc.env:CACHE_ENV,dev}
+  key_prefix: ${oc.env:CACHE_KEY_PREFIX,nl2sql}
+  fail_fast: ${oc.env:CACHE_FAIL_FAST,false}
+  stale_ttl_seconds: ${oc.env:CACHE_STALE_TTL_SECONDS,3600}
+  prompt_version: ${oc.env:PROMPT_VERSION,v1}
+  schema_version: ${oc.env:SCHEMA_VERSION,v1}
+  embedding_model_version: ${oc.env:EMBEDDING_MODEL_VERSION,bge-large-zh-v1.5}
+  index_version: ${oc.env:INDEX_VERSION,v1}
+
+redis:
+  host: ${oc.env:REDIS_HOST,localhost}
+  port: ${oc.env:REDIS_PORT,6379}
+  db: ${oc.env:REDIS_DB,0}
+  password: ${oc.env:REDIS_PASSWORD,''}
+  socket_timeout: ${oc.env:REDIS_SOCKET_TIMEOUT,3.0}
+
+monitoring:
+  prometheus_enabled: ${oc.env:PROMETHEUS_ENABLED,true}

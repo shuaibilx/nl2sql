@@ -48,7 +48,7 @@ class ValueESRepository:
     async def search(self, keyword: str, score_threshold: float = 0.6, limit: int = 5) -> list[ValueInfo]:
         cache_key = f"{keyword}:{score_threshold}:{limit}"
 
-        cached = caches.es_value.get(cache_key)
+        cached = await caches.es_value.get(cache_key)
         if cached is not None:
             return cached
 
@@ -59,10 +59,10 @@ class ValueESRepository:
                                        operation_name="ES-search",
                                        circuit_breaker=self._cb)
             results = [ValueInfo(**hit['_source']) for hit in result['hits']['hits']]
-            caches.es_value.set(cache_key, results)
+            await caches.es_value.set(cache_key, results)
             return results
         except Exception as e:
-            stale = caches.es_value.get_stale(cache_key)
+            stale = await caches.es_value.get_stale(cache_key)
             if stale is not None:
                 logger.warning(f"ES 查询失败，使用过期缓存: {e}")
                 return stale

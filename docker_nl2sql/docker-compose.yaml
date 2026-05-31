@@ -49,6 +49,15 @@ services:  # （服务定义）：声明需要启动和管理的容器实例列�
     volumes:
       - qdrant_data:/qdrant/storage
 
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   embedding:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
     container_name: embedding
@@ -66,3 +75,4 @@ volumes:  #三个全局命名数据卷。作用：数据持久化（Data Persist
   mysql_data:
   es_data:
   qdrant_data:
+  redis_data:

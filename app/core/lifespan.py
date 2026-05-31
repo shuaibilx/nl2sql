@@ -11,6 +11,8 @@ from app.clients.mysql_client_manager import (
     meta_mysql_client_manager,
 )
 from app.clients.qdrant_client_manager import qdrant_client_manager
+from app.conf.app_config import app_config
+from app.core.cache_registry import caches
 
 
 @asynccontextmanager
@@ -20,6 +22,7 @@ async def lifespan(app: FastAPI):
     es_client_manager.init()
     meta_mysql_client_manager.init()
     dw_mysql_client_manager.init()
+    await caches.init(app_config.cache, app_config.redis)
     await init_checkpointer()
     setup_graph()
     try:
@@ -30,3 +33,4 @@ async def lifespan(app: FastAPI):
         await meta_mysql_client_manager.close()
         await dw_mysql_client_manager.close()
         await close_checkpointer()
+        await caches.close()

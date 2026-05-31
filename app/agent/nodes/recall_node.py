@@ -17,14 +17,14 @@ from app.entities.value_info import ValueInfo
 # [改进] Embedding 缓存：相同关键词跨查询重复出现（如"销售额"、"浙江"），
 # 缓存后直接返回，省去 HuggingFace API 调用。maxsize=1024 覆盖常见关键词集，TTL=1小时
 async def cached_embed_query(embedding_client, keyword: str) -> list[float]:
-    cached = caches.embedding.get(keyword)
+    cached = await caches.embedding.get(keyword)
     if cached is not None:
         return cached
     cb = circuit_manager.get("Embedding")
     result = await retry_async(embedding_client.aembed_query, keyword,
                                operation_name="Embedding-aembed_query",
                                circuit_breaker=cb)
-    caches.embedding.set(keyword, result)
+    await caches.embedding.set(keyword, result)
     return result
 
 

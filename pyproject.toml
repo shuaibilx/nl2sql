@@ -23,10 +23,12 @@ dependencies = [
     "langsmith>=0.6.6",
     "loguru>=0.7.3",
     "omegaconf>=2.3.0",
+    "prometheus-client>=0.23.1",
     "pyfailsafe>=0.6.0",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
     "qdrant-client>=1.16.2",
+    "redis>=7.1.0",
     "sqlalchemy>=2.0.46",
 ]
 
