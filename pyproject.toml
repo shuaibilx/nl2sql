@@ -1,7 +1,7 @@
 [project]
 name = "data-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Production-ready Chinese NL2SQL agent built with FastAPI, LangGraph, Redis cache, and Prometheus metrics."
 requires-python = ">=3.12"
 dependencies = [
     "aiomysql>=0.3.2",
