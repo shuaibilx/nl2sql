@@ -1,0 +1,6 @@
+第二步：重置 Windows NAT 驱动（最有效的快速修复法）
+Windows 的 Hyper-V / WSL2 有时会出现网络状态卡死的情况，即使端口没被占用也会报 forbidden by its access permissions。你可以通过重启 Windows NAT 驱动来释放它：
+以管理员身份打开 PowerShell。
+依次运行以下两条命令：
+net stop winnat
+net start winnat

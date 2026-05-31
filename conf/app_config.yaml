@@ -1,0 +1,51 @@
+# Application configuration. Secrets are read from environment variables or .env.
+
+logging:
+  file:
+    enable: true
+    level: INFO
+    path: logs
+    rotation: "10 MB"
+    retention: "7 days"
+  console:
+    enable: true
+    level: INFO
+
+db_meta:
+  host: ${oc.env:DB_META_HOST,localhost}
+  port: ${oc.env:DB_META_PORT,3306}
+  user: ${oc.env:DB_META_USER,atguigu}
+  password: ${oc.env:DB_META_PASSWORD,''}
+  database: ${oc.env:DB_META_DATABASE,meta}
+
+db_dw:
+  host: ${oc.env:DB_DW_HOST,localhost}
+  port: ${oc.env:DB_DW_PORT,3306}
+  user: ${oc.env:DB_DW_USER,atguigu}
+  password: ${oc.env:DB_DW_PASSWORD,''}
+  database: ${oc.env:DB_DW_DATABASE,dw}
+
+qdrant:
+  host: ${oc.env:QDRANT_HOST,localhost}
+  port: ${oc.env:QDRANT_PORT,6333}
+  embedding_size: ${oc.env:QDRANT_EMBEDDING_SIZE,1024}
+
+embedding:
+  host: ${oc.env:EMBEDDING_HOST,localhost}
+  port: ${oc.env:EMBEDDING_PORT,8081}
+  model: ${oc.env:EMBEDDING_MODEL,BAAI/bge-large-zh-v1.5}
+
+es:
+  host: ${oc.env:ES_HOST,localhost}
+  port: ${oc.env:ES_PORT,9200}
+  index_name: ${oc.env:ES_INDEX_NAME,data_agent}
+
+llm:
+  model_name: ${oc.env:LLM_MODEL_NAME,mimo-v2.5}
+  api_key: ${oc.env:LLM_API_KEY,missing}
+  base_url: ${oc.env:LLM_BASE_URL,https://api.xiaomimimo.com/v1}
+
+llm_fallback:
+  model_name: ${oc.env:LLM_FALLBACK_MODEL_NAME,deepseek-v4-flash}
+  api_key: ${oc.env:LLM_FALLBACK_API_KEY,missing}
+  base_url: ${oc.env:LLM_FALLBACK_BASE_URL,https://api.deepseek.com}

@@ -1,0 +1,625 @@
+- id: TC001
+  category: simple_aggregation
+  query: 统计总销售额
+  expected:
+    cleaned_query: 统计总销售额
+    keywords:
+    - 总销售额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    sql_pattern: SELECT SUM.*order_amount
+    expected_sql: SELECT SUM(order_amount) AS result FROM fact_order
+    expected_result: 279159.5
+- id: TC002
+  category: multi_table_join
+  query: 查询商品分类为手机的订单总额
+  expected:
+    cleaned_query: 查询商品分类为手机的订单总额
+    keywords:
+    - 商品分类
+    - 手机
+    - 订单总额
+    - 查询
+    columns:
+    - fact_order.order_amount
+    - dim_product.category
+    values:
+    - 手机
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_product
+    sql_pattern: SELECT SUM.*fact_order.*dim_product.*手机
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product
+      p ON f.product_id = p.product_id WHERE p.category = '手机'
+    expected_result: null
+- id: TC003
+  category: conditional_filter
+  query: 统计2023年第一季度销售额
+  expected:
+    cleaned_query: 统计2023年第一季度销售额
+    keywords:
+    - 2023年
+    - 第一季度
+    - 销售额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    - dim_date.year
+    - dim_date.quarter
+    values:
+    - '2023'
+    - '1'
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_date
+    sql_pattern: SELECT SUM.*fact_order.*dim_date.*2023.*1
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date
+      d ON f.date_id = d.date_id WHERE d.year = 2023 AND d.quarter = 1
+    expected_result: null
+- id: TC004
+  category: quality_query
+  query: 查一下今年卖的最好的商品
+  expected:
+    cleaned_query: 查询今年销售额最高的商品名称
+    keywords:
+    - 今年
+    - 商品
+    - 销售额最高
+    - 查
+    columns:
+    - dim_product.product_name
+    - fact_order.order_amount
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_date
+    - dim_product
+    sql_pattern: SELECT.*product_name.*SUM.*order_amount.*GROUP BY.*ORDER BY.*LIMIT.*1
+    expected_sql: SELECT p.product_name, SUM(f.order_amount) AS 销售额 FROM fact_order
+      f JOIN dim_date d ON f.date_id = d.date_id JOIN dim_product p ON f.product_id
+      = p.product_id WHERE d.year = YEAR(CURDATE()) GROUP BY p.product_name ORDER
+      BY 销售额 DESC LIMIT 1
+    expected_result: []
+- id: TC005
+  category: conditional_filter
+  query: 查询女性用户的订单数量
+  expected:
+    cleaned_query: 查询女性用户的订单数量
+    keywords:
+    - 女性
+    - 用户
+    - 订单数量
+    - 查询
+    columns:
+    - fact_order.order_id
+    - dim_customer.gender
+    values:
+    - 女
+    metrics: []
+    tables:
+    - fact_order
+    - dim_customer
+    sql_pattern: SELECT COUNT.*fact_order.*dim_customer.*女
+    expected_sql: SELECT COUNT(f.order_id) AS result FROM fact_order f JOIN dim_customer
+      c ON f.customer_id = c.customer_id WHERE c.gender = '女'
+    expected_result: 62.0
+- id: TC006
+  category: simple_aggregation
+  query: 统计销售总额
+  expected:
+    cleaned_query: 统计销售总额
+    keywords:
+    - 销售总额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    sql_pattern: SELECT SUM.*order_amount
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f
+    expected_result: 279159.5
+- id: TC007
+  category: multi_table_join
+  query: 统计浙江的销售总额
+  expected:
+    cleaned_query: 统计浙江的销售总额
+    keywords:
+    - 浙江
+    - 销售总额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    - dim_region.province
+    values:
+    - 浙江省
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_region
+    sql_pattern: SELECT SUM.*fact_order.*dim_region.*浙江
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region
+      r ON f.region_id = r.region_id WHERE r.province = '浙江省'
+    expected_result: 47163.0
+- id: TC008
+  category: conditional_filter
+  query: 查询华为手机的订单量
+  expected:
+    cleaned_query: 查询华为手机的订单量
+    keywords:
+    - 华为
+    - 手机
+    - 订单量
+    - 查询
+    columns:
+    - fact_order.order_quantity
+    - dim_product.brand
+    - dim_product.category
+    values:
+    - 华为
+    - 手机
+    metrics: []
+    tables:
+    - fact_order
+    - dim_product
+    sql_pattern: SELECT SUM.*fact_order.*dim_product.*品牌.*品类
+    expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product
+      p ON f.product_id = p.product_id WHERE p.brand = '华为' AND p.category = '手机'
+    expected_result: null
+- id: TC009
+  category: quality_query
+  query: 帮我看看上个月消售额
+  expected:
+    cleaned_query: 查询上个月的销售额
+    keywords:
+    - 上个月
+    - 销售额
+    - 查询
+    columns:
+    - fact_order.order_amount
+    - dim_date.month
+    - dim_date.year
+    values:
+    - '7'
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_date
+    sql_pattern: SELECT SUM.*fact_order.*dim_date.*月
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date
+      d ON f.date_id = d.date_id WHERE d.year = 2024 AND d.month = 7
+    expected_result: null
+- id: TC010
+  category: quality_query
+  query: 各品牌的销额
+  expected:
+    cleaned_query: 统计各品牌的销售额
+    keywords:
+    - 各品牌
+    - 销售额
+    - 统计
+    columns:
+    - dim_product.brand
+    - fact_order.order_amount
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_product
+    sql_pattern: SELECT.*SUM.*order_amount.*GROUP BY.*brand
+    expected_sql: SELECT p.brand, SUM(f.order_amount) AS result FROM fact_order f
+      JOIN dim_product p ON f.product_id = p.product_id GROUP BY p.brand
+    expected_result:
+    - - 苹果
+      - 71992.0
+    - - 华为
+      - 55992.0
+    - - 雀巢
+      - 1575.0
+    - - 耐克
+      - 5394.0
+    - - 蒙牛
+      - 915.0
+    - - 亚马逊
+      - 9793.0
+    - - 乐事
+      - 655.0
+    - - 优衣库
+      - 1891.0
+    - - 三星
+      - 56994.0
+    - - 奥利奥
+      - 584.5
+    - - 美的
+      - 22400.0
+    - - 李维斯
+      - 4792.0
+    - - 阿迪达斯
+      - 7794.0
+    - - 戴森
+      - 32994.0
+    - - Instant Pot
+      - 5394.0
+- id: TC011
+  category: simple_aggregation
+  query: 统计销售总额
+  expected:
+    cleaned_query: 统计销售总额
+    keywords:
+    - 销售总额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    sql_pattern: SELECT SUM.*order_amount
+    expected_sql: SELECT SUM(order_amount) AS result FROM fact_order
+    expected_result: 279159.5
+- id: TC012
+  category: multi_table_join
+  query: 统计浙江的销售总额
+  expected:
+    cleaned_query: 统计浙江的销售总额
+    keywords:
+    - 浙江
+    - 销售总额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    - dim_region.province
+    values:
+    - 浙江省
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_region
+    sql_pattern: SELECT SUM.*fact_order.*dim_region.*浙江
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region
+      r ON f.region_id = r.region_id WHERE r.province = '浙江省'
+    expected_result: 47163.0
+- id: TC013
+  category: conditional_filter
+  query: 查询华为手机的订单量
+  expected:
+    cleaned_query: 查询华为手机的订单量
+    keywords:
+    - 华为
+    - 手机
+    - 订单量
+    - 查询
+    columns:
+    - fact_order.order_quantity
+    - dim_product.brand
+    values:
+    - 华为
+    metrics: []
+    tables:
+    - fact_order
+    - dim_product
+    sql_pattern: SELECT SUM.*order_quantity.*fact_order.*dim_product.*华为
+    expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product
+      p ON f.product_id = p.product_id WHERE p.brand = '华为'
+    expected_result: '8'
+- id: TC014
+  category: quality_query
+  query: 帮偶看下上个月的消售额
+  expected:
+    cleaned_query: 查询上个月的销售额
+    keywords:
+    - 上个月
+    - 销售额
+    - 查询
+    columns:
+    - fact_order.order_amount
+    - dim_date.month
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_date
+    sql_pattern: SELECT SUM.*order_amount.*fact_order.*dim_date.*month
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date
+      d ON f.date_id = d.date_id WHERE d.year = YEAR(CURDATE()) AND d.month = MONTH(CURDATE())
+      - 1
+    expected_result: null
+- id: TC015
+  category: conditional_filter
+  query: 查询2023年第一季度销售额
+  expected:
+    cleaned_query: 查询2023年第一季度销售额
+    keywords:
+    - 2023年
+    - 第一季度
+    - 销售额
+    - 查询
+    columns:
+    - fact_order.order_amount
+    - dim_date.year
+    - dim_date.quarter
+    values:
+    - '2023'
+    - '1'
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_date
+    sql_pattern: SELECT SUM.*order_amount.*fact_order.*dim_date.*year.*quarter
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date
+      d ON f.date_id = d.date_id WHERE d.year = '2023' AND d.quarter = '1'
+    expected_result: null
+- id: TC016
+  category: simple_aggregation
+  query: 查询总销售额
+  expected:
+    cleaned_query: 查询总销售额
+    keywords:
+    - 总销售额
+    - 查询
+    columns:
+    - fact_order.order_amount
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    sql_pattern: SELECT SUM.*order_amount
+    expected_sql: SELECT SUM(order_amount) AS result FROM fact_order
+    expected_result: 279159.5
+- id: TC017
+  category: multi_table_join
+  query: 统计服饰品类的销售总额
+  expected:
+    cleaned_query: 统计服饰品类的销售总额
+    keywords:
+    - 服饰品类
+    - 销售总额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    - dim_product.category
+    values:
+    - 服饰
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_product
+    sql_pattern: SELECT SUM.*fact_order.*dim_product.*服饰
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product
+      p ON f.product_id = p.product_id WHERE p.category = '服饰'
+    expected_result: 6683.0
+- id: TC018
+  category: conditional_filter
+  query: 查询女性客户的总订单金额
+  expected:
+    cleaned_query: 查询女性客户的总订单金额
+    keywords:
+    - 女性客户
+    - 总订单金额
+    - 查询
+    columns:
+    - fact_order.order_amount
+    - dim_customer.gender
+    values:
+    - 女
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_customer
+    sql_pattern: SELECT SUM.*fact_order.*dim_customer.*女
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_customer
+      c ON f.customer_id = c.customer_id WHERE c.gender = '女'
+    expected_result: 143789.0
+- id: TC019
+  category: quality_query
+  query: 帮我看看上个月的消售额
+  expected:
+    cleaned_query: 统计上个月的销售额
+    keywords:
+    - 上个月
+    - 销售额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    - dim_date.month
+    values: []
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_date
+    sql_pattern: SELECT SUM.*fact_order.*dim_date.*上月
+    expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date
+      d ON f.date_id = d.date_id WHERE d.month = MONTH(CURDATE()) - 1
+    expected_result: null
+- id: TC020
+  category: conditional_filter
+  query: 查询2023年第一季度的订单量
+  expected:
+    cleaned_query: 查询2023年第一季度的订单量
+    keywords:
+    - 2023年
+    - 第一季度
+    - 订单量
+    - 查询
+    columns:
+    - fact_order.order_quantity
+    - dim_date.year
+    - dim_date.quarter
+    values:
+    - '2023'
+    - '1'
+    metrics: []
+    tables:
+    - fact_order
+    - dim_date
+    sql_pattern: SELECT SUM.*order_quantity.*dim_date.*2023.*1
+    expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_date
+      d ON f.date_id = d.date_id WHERE d.year = 2023 AND d.quarter = 1
+    expected_result: null
+- id: TC021
+  category: simple_aggregation
+  query: 统计总订单量
+  expected:
+    cleaned_query: 统计总订单量
+    keywords:
+    - 统计
+    - 订单量
+    columns:
+    - fact_order.order_id
+    values: []
+    metrics: []
+    tables:
+    - fact_order
+    sql_pattern: SELECT COUNT.*order_id
+    expected_sql: SELECT COUNT(order_id) AS result FROM fact_order
+    expected_result: 115.0
+- id: TC022
+  category: multi_table_join
+  query: 查询女性客户的平均订单金额
+  expected:
+    cleaned_query: 查询女性客户的平均订单金额
+    keywords:
+    - 女性
+    - 客户
+    - 平均订单金额
+    - 查询
+    columns:
+    - fact_order.order_amount
+    - dim_customer.gender
+    values:
+    - 女
+    metrics:
+    - AOV
+    tables:
+    - fact_order
+    - dim_customer
+    sql_pattern: SELECT SUM.*COUNT.*fact_order.*dim_customer.*性别
+    expected_sql: SELECT SUM(f.order_amount) / COUNT(f.order_id) AS result FROM fact_order
+      f JOIN dim_customer c ON f.customer_id = c.customer_id WHERE c.gender = '女'
+    expected_result: 2319.1774193548385
+- id: TC023
+  category: conditional_filter
+  query: 统计2023年第二季度销售额超过1000元的订单数量
+  expected:
+    cleaned_query: 统计2023年第二季度销售额超过1000元的订单数量
+    keywords:
+    - 2023年
+    - 第二季度
+    - 销售额
+    - 超过
+    - 1000元
+    - 订单数量
+    - 统计
+    columns:
+    - fact_order.order_id
+    - fact_order.order_amount
+    - dim_date.year
+    - dim_date.quarter
+    values:
+    - '2023'
+    - Q2
+    metrics: []
+    tables:
+    - fact_order
+    - dim_date
+    sql_pattern: SELECT COUNT.*fact_order.*dim_date.*2023.*Q2.*order_amount.*1000
+    expected_sql: SELECT COUNT(f.order_id) AS result FROM fact_order f JOIN dim_date
+      d ON f.date_id = d.date_id WHERE d.year = 2023 AND d.quarter = 'Q2' AND f.order_amount
+      > 1000
+    expected_result: 0.0
+- id: TC024
+  category: quality_query
+  query: 帮我瞅瞅上半年各品类的销收总额
+  expected:
+    cleaned_query: 统计上半年各品类的销售总额
+    keywords:
+    - 上半年
+    - 各品类
+    - 销售总额
+    - 统计
+    columns:
+    - fact_order.order_amount
+    - dim_product.category
+    - dim_date.month
+    values:
+    - '1'
+    - '2'
+    - '3'
+    - '4'
+    - '5'
+    - '6'
+    metrics:
+    - GMV
+    tables:
+    - fact_order
+    - dim_product
+    - dim_date
+    sql_pattern: SELECT.*category.*SUM.*order_amount.*fact_order.*dim_product.*dim_date.*month.*<=.*6
+    expected_sql: SELECT p.category, SUM(f.order_amount) AS result FROM fact_order
+      f JOIN dim_product p ON f.product_id = p.product_id JOIN dim_date d ON f.date_id
+      = d.date_id WHERE d.month <= 6 GROUP BY p.category
+    expected_result:
+    - - 手机数码
+      - 194771.0
+    - - 食品饮料
+      - 2490.0
+    - - 鞋靴
+      - 13188.0
+    - - 休闲零食
+      - 1239.5
+    - - 服饰
+      - 6683.0
+    - - 家用电器
+      - 60788.0
+- id: TC025
+  category: conditional_filter
+  query: 查看品牌为苹果、品类为手机的销售件数
+  expected:
+    cleaned_query: 查看品牌为苹果、品类为手机的销售件数
+    keywords:
+    - 品牌
+    - 苹果
+    - 品类
+    - 手机
+    - 销售件数
+    - 查看
+    columns:
+    - fact_order.order_quantity
+    - dim_product.brand
+    - dim_product.category
+    values:
+    - 苹果
+    - 手机
+    metrics: []
+    tables:
+    - fact_order
+    - dim_product
+    sql_pattern: SELECT SUM.*order_quantity.*fact_order.*dim_product.*苹果.*手机
+    expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product
+      p ON f.product_id = p.product_id WHERE p.brand = '苹果' AND p.category = '手机'
+    expected_result: null

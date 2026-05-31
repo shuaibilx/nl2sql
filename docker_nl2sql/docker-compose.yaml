@@ -1,0 +1,68 @@
+services:  # （服务定义）：声明需要启动和管理的容器实例列表
+
+  mysql:
+    image: mysql:8.0  # 基础镜像引用：指示 Docker 引擎去官方仓库下载名为 mysql，版本号为 8.0 的标准环境包。
+    container_name: mysql # 容器代号：为运行起来的进程指定一个固定的名字，方便后续其他程序通过这个名字进行网络互访。
+    restart: unless-stopped # 重启策略：除非用户手动执行停止命令，否则无论 Docker 软件重启还是系统崩溃，都会自动把这个容器重新拉起来。
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_USER: ${MYSQL_USER:-atguigu}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    ports: # 端口映射：格式为 "宿主机端口:容器内部端口"。例如 - "3306:3306" 表示将你物理电脑的 3306 网络端口，与该容器内部的 3306 端口打通。
+      - "3306:3306"
+    volumes: # 挂载点：将外部的物理路径映射到容器内的虚拟路径。例如 - mysql_data:/var/lib/mysql，是将名为 mysql_data 的外部数据卷，强制替换掉容器内部存储数据的 /var/lib/mysql 文件夹。
+      - mysql_data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+
+  elasticsearch:
+    build: ./elasticsearch # 上下文构建指令。不从网络直接拉取成品镜像，而是读取当前目录下 elasticsearch 文件夹内的 Dockerfile，在本地现场编译构建一个全新的自定义镜像。
+    container_name: elasticsearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"  # 生产环境建议开启
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+  kibana:
+    image: kibana:8.19.10
+    container_name: kibana
+    restart: unless-stopped
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on: #服务依赖控制。强制启动顺序，Kibana 容器必须等待 Elasticsearch 容器成功启动后才能启动，因为 Kibana 是 Elasticsearch 的可视化管理界面。
+      - elasticsearch
+
+  qdrant:
+    image: qdrant/qdrant:v1.16
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # HTTP
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  embedding:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    container_name: embedding
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      MODEL_ID: /models/bge-large-zh-v1.5
+      MAX_CONCURRENT_REQUESTS: "16"
+      MAX_BATCH_TOKENS: "16384"
+    volumes:
+      - ./embedding/bge-large-zh-v1.5:/models/bge-large-zh-v1.5
+
+volumes:  #三个全局命名数据卷。作用：数据持久化（Data Persistence），确保容器被销毁后，数据库里的真实数据不会丢失。
+  mysql_data:
+  es_data:
+  qdrant_data:

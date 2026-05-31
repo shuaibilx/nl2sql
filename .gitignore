@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and runtime data
+logs/
+app/**/logs/
+eval/logs/
+eval/reports/
+*.log
+checkpoints/
+*.db
+*.db-shm
+*.db-wal
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Large local model artifacts
+docker_nl2sql/embedding/
+docker_nl2sql/elasticsearch/plugins/*.zip
