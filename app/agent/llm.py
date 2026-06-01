@@ -1,5 +1,6 @@
 from langchain.chat_models import init_chat_model
 from langchain_community.chat_models import ChatTongyi
+from langchain_deepseek import ChatDeepSeek
 
 from app.conf.app_config import app_config
 from app.core.circuit_breaker import CircuitOpenError
@@ -19,13 +20,10 @@ llm_flash = ChatTongyi(model="qwen3.7-max-preview",
 )      # [改进] 单次LLM调用60秒超时，防止长时间挂起
 
 # [降级] 备用模型：主模型不可用时自动切换
-llm_fallback = init_chat_model(model=app_config.llm_fallback.model_name,
-                               model_provider="openai",
-                               api_key=app_config.llm_fallback.api_key,
-                               base_url=app_config.llm_fallback.base_url,
-                               temperature=0,
-                               max_retries=2,
-                               timeout=60)
+llm_fallback = ChatDeepSeek(model=app_config.llm_fallback.model_name,
+                            temperature=0,
+                            max_retries=2,
+                            timeout=60)
 
 
 async def call_with_fallback(prompt, parser, invoke_args: dict, primary_llm=None, label: str = ""):

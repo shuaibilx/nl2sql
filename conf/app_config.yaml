@@ -55,7 +55,19 @@ cache:
   env: ${oc.env:CACHE_ENV,dev}
   key_prefix: ${oc.env:CACHE_KEY_PREFIX,nl2sql}
   fail_fast: ${oc.env:CACHE_FAIL_FAST,false}
-  stale_ttl_seconds: ${oc.env:CACHE_STALE_TTL_SECONDS,3600}
+  stale_ttl_seconds: ${oc.env:CACHE_STALE_TTL_SECONDS,1800}
+  semantic_enabled: ${oc.env:CACHE_SEMANTIC_ENABLED,true}
+  semantic_threshold: ${oc.env:CACHE_SEMANTIC_THRESHOLD,0.94}
+  semantic_max_entries: ${oc.env:CACHE_SEMANTIC_MAX_ENTRIES,1024}
+  semantic_ttl_seconds: ${oc.env:CACHE_SEMANTIC_TTL_SECONDS,7200}
+  ttl_embedding_seconds: ${oc.env:CACHE_TTL_EMBEDDING_SECONDS,86400}
+  ttl_llm_cleanup_seconds: ${oc.env:CACHE_TTL_LLM_CLEANUP_SECONDS,7200}
+  ttl_llm_expand_seconds: ${oc.env:CACHE_TTL_LLM_EXPAND_SECONDS,7200}
+  ttl_qdrant_column_seconds: ${oc.env:CACHE_TTL_QDRANT_COLUMN_SECONDS,3600}
+  ttl_qdrant_metric_seconds: ${oc.env:CACHE_TTL_QDRANT_METRIC_SECONDS,3600}
+  ttl_es_value_seconds: ${oc.env:CACHE_TTL_ES_VALUE_SECONDS,3600}
+  ttl_generate_sql_seconds: ${oc.env:CACHE_TTL_GENERATE_SQL_SECONDS,7200}
+  ttl_meta_mysql_seconds: ${oc.env:CACHE_TTL_META_MYSQL_SECONDS,7200}
   prompt_version: ${oc.env:PROMPT_VERSION,v1}
   schema_version: ${oc.env:SCHEMA_VERSION,v1}
   embedding_model_version: ${oc.env:EMBEDDING_MODEL_VERSION,bge-large-zh-v1.5}
@@ -67,6 +79,21 @@ redis:
   db: ${oc.env:REDIS_DB,0}
   password: ${oc.env:REDIS_PASSWORD,''}
   socket_timeout: ${oc.env:REDIS_SOCKET_TIMEOUT,3.0}
+
+checkpoint:
+  backend: ${oc.env:CHECKPOINT_BACKEND,postgres}
+  postgres_dsn: ${oc.env:CHECKPOINT_POSTGRES_DSN,postgresql://nl2sql:nl2sql@localhost:5432/nl2sql_checkpoint}
+  pool_min_size: ${oc.env:CHECKPOINT_POOL_MIN_SIZE,1}
+  pool_max_size: ${oc.env:CHECKPOINT_POOL_MAX_SIZE,10}
+  setup_on_start: ${oc.env:CHECKPOINT_SETUP_ON_START,true}
+  retention_days: ${oc.env:CHECKPOINT_RETENTION_DAYS,30}
+  sqlite_path: ${oc.env:CHECKPOINT_SQLITE_PATH,checkpoints/checkpoint.db}
+  strict_msgpack: ${oc.env:LANGGRAPH_STRICT_MSGPACK,true}
+
+recall:
+  column_score_threshold: ${oc.env:RECALL_COLUMN_SCORE_THRESHOLD,0.7}
+  metric_score_threshold: ${oc.env:RECALL_METRIC_SCORE_THRESHOLD,0.7}
+  value_score_threshold: ${oc.env:RECALL_VALUE_SCORE_THRESHOLD,1.0}
 
 monitoring:
   prometheus_enabled: ${oc.env:PROMETHEUS_ENABLED,true}

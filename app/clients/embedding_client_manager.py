@@ -18,5 +18,13 @@ class EmbeddingClientManager:
     def init(self):
         self.client = HuggingFaceEndpointEmbeddings(model=self._get_url())
 
+    async def close(self):
+        if self.client is None:
+            return
+        async_client = getattr(self.client, "async_client", None)
+        if async_client is not None and hasattr(async_client, "close"):
+            await async_client.close()
+        self.client = None
+
 
 embedding_client_manager = EmbeddingClientManager(app_config.embedding)

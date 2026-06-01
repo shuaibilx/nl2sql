@@ -6,12 +6,12 @@
 
 Agent NL2SQL 的目标是把业务用户的自然语言问题转换为结构化 SQL 查询结果。系统会先清洗问题、提取和扩展关键词，再并行召回字段、指标和值域信息，随后筛选上下文、生成 SQL、校验 SQL，并在必要时自动修正。若 SQL 连续校验失败达到上限，服务会触发人机确认中断，由调用方决定是否继续执行。
 
-仓库当前已完成生产级缓存改造：Redis 作为优先缓存后端，内存缓存作为开发环境或 Redis 不可用时的 fallback；缓存 key 按租户、用户、项目隔离；同时暴露 Prometheus `/metrics` 指标，方便观察缓存命中、过期和淘汰情况。
+仓库当前已完成生产级缓存改造：Redis 作为优先缓存后端，内存缓存作为开发环境或 Redis 不可用时的 fallback；缓存 key 按租户、用户、项目隔离；SQL 生成支持可选 Semantic Redis Cache；同时暴露 Prometheus `/metrics` 指标，方便观察缓存命中、过期和淘汰情况。
 
 ## GitHub Description
 
 ```text
-Production-ready Chinese NL2SQL agent built with FastAPI, LangGraph, MySQL, Qdrant, Elasticsearch, Redis cache, and Prometheus metrics.
+Production-ready Chinese NL2SQL agent with FastAPI, LangGraph, Redis/Semantic Cache, Qdrant, Elasticsearch, PostgreSQL checkpoints, and Prometheus metrics.
 ```
 
 ## 核心能力
@@ -20,7 +20,7 @@ Production-ready Chinese NL2SQL agent built with FastAPI, LangGraph, MySQL, Qdra
 - LangGraph 工作流：用图编排 NL2SQL 流程，支持 checkpoint 与中断恢复。
 - 多路召回：字段和指标使用 Qdrant 向量检索，枚举值使用 Elasticsearch 检索，元数据来自 MySQL。
 - SQL 安全校验：校验失败时进入修正循环，连续失败后触发人机确认，而不是每次执行前都打断。
-- 生产级缓存：Redis 优先、内存 fallback，支持 TTL、stale fallback、版本化 key、按租户/用户/项目隔离。
+- 生产级缓存：Redis 优先、内存 fallback，支持 TTL、stale fallback、Semantic SQL cache、版本化 key、按租户/用户/项目隔离。
 - 可观测性：通过 Prometheus 格式的 `/metrics` 暴露缓存请求、命中率、过期率、淘汰率和后端可用性。
 - 本地基础设施：提供 Docker Compose 启动 MySQL、Elasticsearch、Kibana、Qdrant、Redis 和 Embedding 服务。
 - 测试覆盖：包含缓存、SQL 校验、SQL 执行、熔断等关键行为测试。
@@ -227,7 +227,19 @@ CACHE_BACKEND=redis
 CACHE_ENV=dev
 CACHE_KEY_PREFIX=nl2sql
 CACHE_FAIL_FAST=false
-CACHE_STALE_TTL_SECONDS=3600
+CACHE_STALE_TTL_SECONDS=1800
+CACHE_SEMANTIC_ENABLED=true
+CACHE_SEMANTIC_THRESHOLD=0.94
+CACHE_SEMANTIC_MAX_ENTRIES=1024
+CACHE_SEMANTIC_TTL_SECONDS=7200
+CACHE_TTL_EMBEDDING_SECONDS=86400
+CACHE_TTL_LLM_CLEANUP_SECONDS=7200
+CACHE_TTL_LLM_EXPAND_SECONDS=7200
+CACHE_TTL_QDRANT_COLUMN_SECONDS=3600
+CACHE_TTL_QDRANT_METRIC_SECONDS=3600
+CACHE_TTL_ES_VALUE_SECONDS=3600
+CACHE_TTL_GENERATE_SQL_SECONDS=7200
+CACHE_TTL_META_MYSQL_SECONDS=7200
 PROMPT_VERSION=v1
 SCHEMA_VERSION=v1
 EMBEDDING_MODEL_VERSION=bge-large-zh-v1.5
@@ -253,12 +265,28 @@ user_id=default_user
 project_id=default_project
 ```
 
+语义缓存：
+
+- `CACHE_SEMANTIC_ENABLED=true` 后，`generate_sql` 会先查精确缓存，再用 query embedding 查询 `semantic_generate_sql`。
+- 语义缓存只在相同 tenant/user/project、相同上下文 fingerprint、相同 prompt/schema version 下生效。
+- 命中条件由 `CACHE_SEMANTIC_THRESHOLD` 控制，默认 0.94，建议生产环境先观察评测集后再调低。
+- `CACHE_SEMANTIC_MAX_ENTRIES` 控制每个上下文 namespace 中保留的语义样本数。
+- 语义命中后会反写当前问题的精确 SQL 缓存，后续相同请求走普通精确缓存。
+
 建议生产环境设置：
 
 ```env
 CACHE_BACKEND=redis
 CACHE_FAIL_FAST=true
 CACHE_ENV=prod
+CACHE_SEMANTIC_ENABLED=true
+CACHE_SEMANTIC_THRESHOLD=0.94
+CACHE_SEMANTIC_TTL_SECONDS=7200
+CACHE_STALE_TTL_SECONDS=1800
+CACHE_TTL_QDRANT_COLUMN_SECONDS=3600
+CACHE_TTL_QDRANT_METRIC_SECONDS=3600
+CACHE_TTL_ES_VALUE_SECONDS=3600
+CACHE_TTL_GENERATE_SQL_SECONDS=7200
 ```
 
 ## 测试
@@ -274,19 +302,50 @@ uv run pytest -q
 - Memory cache 命中、未命中、过期、淘汰、stale fallback
 - Redis 不可用时 fallback 与 fail-fast
 - 多租户缓存 key 隔离
+- Semantic SQL cache 的阈值命中、scope 隔离、上下文隔离、容量淘汰和 namespace 清理
 - 版本变更后的缓存隔离
 - Prometheus 指标导出
 - SQL 校验、执行与熔断相关行为
 
 ## 评测与压测
 
-`eval/` 目录包含测试集、评测脚本、并发评测和压测入口，可用于验证 NL2SQL 质量、召回效果、延迟和并发表现。
+`eval/` 目录保留一个收敛后的并发评测入口，用 50 条专用样本验证 NL2SQL 在并发场景下的核心表现。默认关注 5 个指标：
 
-示例：
+- `result_accuracy`：SQL 执行结果与期望结果是否一致。
+- `sql_execution_rate`：生成 SQL 是否可执行。
+- `p50_latency_s`：并发场景中位延迟。
+- `p95_latency_s`：并发场景尾延迟。
+- `throughput_qps`：端到端吞吐量。
+
+运行示例：
 
 ```bash
-uv run python eval/run_eval.py
-uv run python eval/run_concurrent_eval.py
+uv run python eval/run_benchmark.py --concurrency 5
+uv run python eval/run_benchmark.py --concurrency 10 --limit 20
+uv run python eval/run_benchmark.py --validate-only
+uv run python eval/run_benchmark.py --concurrency 5 --langsmith-dataset nl2sql-benchmark
+```
+
+Semantic SQL cache 专用测试集位于 `eval/semantic_cache_cases.yaml`，包含 10 个完全不同语义簇，每簇 10 条语义相近但表达不同的问题。该数据集刻意让同簇样本共享同一条 `expected_sql`，运行时需要允许重复期望 SQL：
+
+```bash
+uv run python eval/run_benchmark.py --cases eval/semantic_cache_cases.yaml --allow-duplicate-expected-sql --concurrency 5
+```
+
+输出文件：
+
+- `eval/reports/benchmark_YYYYMMDD_HHMMSS.log`：运行日志。
+- `eval/reports/benchmark_samples_YYYYMMDD_HHMMSS.jsonl`：样本级指标、实际 SQL、实际结果和期望结果。
+- `eval/reports/benchmark_report_YYYYMMDD_HHMMSS.md`：汇总报告和失败样本对比。
+
+## Recall Guard
+
+Qdrant 字段/指标召回和 Elasticsearch 枚举值召回都带有可配置阈值。低于阈值的候选不会进入后续上下文；如果三路召回都为空，流程会直接返回“当前查询内容在数据库中没有可用的相关字段、指标或枚举值”，不再生成 SQL。
+
+```env
+RECALL_COLUMN_SCORE_THRESHOLD=0.7
+RECALL_METRIC_SCORE_THRESHOLD=0.7
+RECALL_VALUE_SCORE_THRESHOLD=1.0
 ```
 
 ## 安全与工程约定
@@ -299,4 +358,4 @@ uv run python eval/run_concurrent_eval.py
 
 ## 当前状态
 
-项目当前已完成基础 NL2SQL 工作流、SQL 校验与中断恢复、工程配置加固、生产级缓存策略、Prometheus 监控接入和关键测试覆盖。后续可以继续补强认证鉴权、租户级限流、结构化日志、CI/CD 和在线评测报表。
+项目当前已完成基础 NL2SQL 工作流、SQL 校验与中断恢复、工程配置加固、生产级缓存策略、Semantic Redis Cache、Prometheus 监控接入和关键测试覆盖。后续可以继续补强认证鉴权、租户级限流、结构化日志、CI/CD 和在线评测报表。

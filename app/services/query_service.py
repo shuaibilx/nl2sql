@@ -13,6 +13,8 @@ from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
 from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantRepository
 from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
+from checkpoints.base import make_checkpoint_thread_id
+from checkpoints.manager import touch_checkpoint_session
 
 
 class QueryService:
@@ -42,7 +44,17 @@ class QueryService:
     ):
         session_id = session_id or str(uuid.uuid4())
         scope = CacheScope.from_optional(tenant_id, user_id, project_id)
-        config = {"configurable": {"thread_id": session_id}}
+        thread_id = make_checkpoint_thread_id(scope, session_id)
+        config = {"configurable": {"thread_id": thread_id}}
+        try:
+            await touch_checkpoint_session(
+                external_session_id=session_id,
+                thread_id=thread_id,
+                scope=scope,
+            )
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False, default=str)}\n\n"
+            return
         context = DataAgentContext(
             embedding_client=self.embedding_client,
             column_qdrant_repository=self.column_qdrant_repository,
@@ -53,7 +65,7 @@ class QueryService:
             cache_scope=scope,
         )
         state = DataAgentState(query=query, cleaned_query="", retry_count=0)
-        async for event in self._stream(state, context, config, scope):
+        async for event in self._stream(state, context, config, scope, session_id):
             yield event
 
     async def resume(
@@ -65,11 +77,30 @@ class QueryService:
         project_id: str | None = None,
     ):
         scope = CacheScope.from_optional(tenant_id, user_id, project_id)
-        config = {"configurable": {"thread_id": session_id}}
-        async for event in self._stream(Command(resume=confirmed), None, config, scope):
+        thread_id = make_checkpoint_thread_id(scope, session_id)
+        config = {"configurable": {"thread_id": thread_id}}
+        try:
+            await touch_checkpoint_session(
+                external_session_id=session_id,
+                thread_id=thread_id,
+                scope=scope,
+            )
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False, default=str)}\n\n"
+            return
+        async for event in self._stream(
+            Command(resume=confirmed), None, config, scope, session_id
+        ):
             yield event
 
-    async def _stream(self, input_, context, config, scope: CacheScope):
+    async def _stream(
+        self,
+        input_,
+        context,
+        config,
+        scope: CacheScope,
+        external_session_id: str,
+    ):
         graph = get_graph()
         with use_cache_scope(scope):
             try:
@@ -82,7 +113,7 @@ class QueryService:
                     if mode == "updates" and "__interrupt__" in chunk:
                         interrupt_tuple = chunk["__interrupt__"]
                         interrupt_info = interrupt_tuple[0].value
-                        yield f"data: {json.dumps({'type': 'interrupt', 'session_id': config['configurable']['thread_id'], **interrupt_info}, ensure_ascii=False, default=str)}\n\n"
+                        yield f"data: {json.dumps({'type': 'interrupt', 'session_id': external_session_id, **interrupt_info}, ensure_ascii=False, default=str)}\n\n"
                         return
                     elif mode == "custom":
                         yield f"data: {json.dumps(chunk, ensure_ascii=False, default=str)}\n\n"

@@ -58,6 +58,19 @@ services:  # （服务定义）：声明需要启动和管理的容器实例列�
     volumes:
       - redis_data:/data
 
+  postgres:
+    image: postgres:16
+    container_name: nl2sql-checkpoint-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CHECKPOINT_POSTGRES_DB:-nl2sql_checkpoint}
+      POSTGRES_USER: ${CHECKPOINT_POSTGRES_USER:-nl2sql}
+      POSTGRES_PASSWORD: ${CHECKPOINT_POSTGRES_PASSWORD:-nl2sql}
+    ports:
+      - "5432:5432"
+    volumes:
+      - checkpoint_postgres_data:/var/lib/postgresql/data
+
   embedding:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
     container_name: embedding
@@ -76,3 +89,4 @@ volumes:  #三个全局命名数据卷。作用：数据持久化（Data Persist
   es_data:
   qdrant_data:
   redis_data:
+  checkpoint_postgres_data:

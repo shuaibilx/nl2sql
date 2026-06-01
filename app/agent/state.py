@@ -59,6 +59,8 @@ class DataAgentState(TypedDict):
 
     table_infos: list[TableInfoState]  # 表信息
     metric_infos: list[MetricInfoState]  # 指标信息
+    no_context: bool  # 召回为空时跳过 SQL 生成并返回无上下文提示
+    no_context_message: str  # 无上下文提示
 
     date_info: DateInfoState  # 日期信息
     db_info: DBInfoState  # 数据库信息

@@ -262,5 +262,12 @@ class MetaKnowledgeService:
             await self._save_metric_info_to_qdrant(metric_infos)
             logger.info("为指标信息建立向量索引")
 
-        await caches.clear_names(["meta_mysql", "qdrant_column", "qdrant_metric", "es_value", "generate_sql"])
+        await caches.clear_names([
+            "meta_mysql",
+            "qdrant_column",
+            "qdrant_metric",
+            "es_value",
+            "generate_sql",
+            "semantic_generate_sql",
+        ])
         logger.info("元数据知识库构建完成")

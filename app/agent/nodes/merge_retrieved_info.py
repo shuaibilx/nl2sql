@@ -7,6 +7,9 @@ from app.entities.column_info import ColumnInfo
 from app.entities.table_info import TableInfo
 
 
+NO_CONTEXT_MESSAGE = "当前查询内容在数据库中没有可用的相关字段、指标或枚举值，无法生成可靠 SQL。"
+
+
 async def merge_retrieved_info(state: DataAgentState, runtime: Runtime[DataAgentContext]):
     writer = runtime.stream_writer
     writer({"type": "progress", "step": "合并召回信息", "status": "running"})
@@ -15,6 +18,11 @@ async def merge_retrieved_info(state: DataAgentState, runtime: Runtime[DataAgent
     retrieved_columns = state["retrieved_columns"] #list[ColumnInfo]
     retrieved_values = state["retrieved_values"]   #list[ValueInfo]
     retrieved_metrics = state["retrieved_metrics"] #list[MetricInfo]
+
+    if not retrieved_columns and not retrieved_values and not retrieved_metrics:
+        writer({"type": "progress", "step": "合并召回信息", "status": "no_context"})
+        logger.info("召回结果为空，停止 NL2SQL 流程")
+        return {"no_context": True, "no_context_message": NO_CONTEXT_MESSAGE}
 
     # 获取所需依赖
     meta_mysql_repository = runtime.context["meta_mysql_repository"]
@@ -88,7 +96,12 @@ async def merge_retrieved_info(state: DataAgentState, runtime: Runtime[DataAgent
         logger.info(
             f"合并召回信息: 表信息-{[table_info['name'] for table_info in table_infos]},指标信息-{[metric_info['name'] for metric_info in metric_infos]}")
 
-        return {"table_infos": table_infos, "metric_infos": metric_infos}
+        if not table_infos and not metric_infos:
+            writer({"type": "progress", "step": "合并召回信息", "status": "no_context"})
+            logger.info("召回合并后上下文为空，停止 NL2SQL 流程")
+            return {"no_context": True, "no_context_message": NO_CONTEXT_MESSAGE}
+
+        return {"table_infos": table_infos, "metric_infos": metric_infos, "no_context": False}
     except Exception as e:
         writer({"type": "progress", "step": "合并召回信息", "status": "error"})
         logger.error(f"合并召回信息失败: {str(e)}")

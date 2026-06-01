@@ -23,7 +23,7 @@ async def _call_llm_cleanup(query: str) -> str:
         template=load_prompt("query_cleanup"),
         input_variables=["query"],
     )
-    chain = prompt | llm_flash
+    chain = prompt | llm
     result = await chain.ainvoke({"query": query})
     cleaned = result.content.strip()
     await caches.llm_cleanup.set(query, cleaned)

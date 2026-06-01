@@ -67,6 +67,27 @@ class CacheStats:
         return self.evictions / self.sets if self.sets else 0.0
 
 
+@dataclass
+class SemanticCacheRecord:
+    query: str
+    embedding: list[float]
+    value: Any
+    context_hash: str
+    created_at: float
+    ttl: int
+
+    @property
+    def is_expired(self) -> bool:
+        return time.time() - self.created_at > self.ttl
+
+
+@dataclass
+class SemanticCacheHit:
+    value: Any
+    query: str
+    similarity: float
+
+
 class CacheBackend(Protocol):
     async def get_entry(self, key: str) -> CacheEntry | None:
         ...
@@ -283,6 +304,164 @@ class ScopedCache:
         )
 
 
+class SemanticCache:
+    def __init__(
+        self,
+        name: str,
+        ttl: int,
+        version: str,
+        registry: "CacheRegistry",
+        threshold: float,
+        max_entries: int,
+    ):
+        self.name = name
+        self.ttl = ttl
+        self.version = version
+        self.registry = registry
+        self.threshold = threshold
+        self.max_entries = max_entries
+        self.stats = CacheStats()
+
+    async def get(self, query: str, embedding: list[float], context_key: Any) -> SemanticCacheHit | None:
+        context_hash = cache_key_hash(context_key)
+        key = self._index_key(context_hash)
+        entry = await self.registry.backend.get_entry(key)
+        if entry is None:
+            self._record_request("miss")
+            return None
+
+        records = self._live_records(entry.value)
+        if not records:
+            self._record_request("expired")
+            await self.registry.backend.delete(key)
+            return None
+
+        best_record: SemanticCacheRecord | None = None
+        best_similarity = -1.0
+        for record in records:
+            similarity = cosine_similarity(embedding, record.embedding)
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_record = record
+
+        if best_record is None or best_similarity < self.threshold:
+            self._record_request("miss")
+            if len(records) != len(entry.value):
+                await self._write_records(key, records)
+            return None
+
+        self._record_request("hit")
+        if len(records) != len(entry.value):
+            await self._write_records(key, records)
+        return SemanticCacheHit(
+            value=best_record.value,
+            query=best_record.query,
+            similarity=best_similarity,
+        )
+
+    async def set(
+        self,
+        query: str,
+        embedding: list[float],
+        context_key: Any,
+        value: Any,
+        ttl: int | None = None,
+    ) -> None:
+        ttl = ttl or self.ttl
+        context_hash = cache_key_hash(context_key)
+        key = self._index_key(context_hash)
+        entry = await self.registry.backend.get_entry(key)
+        records = self._live_records(entry.value if entry is not None else [])
+
+        records = [
+            record
+            for record in records
+            if not (record.query == query and record.context_hash == context_hash)
+        ]
+        records.append(
+            SemanticCacheRecord(
+                query=query,
+                embedding=embedding,
+                value=value,
+                context_hash=context_hash,
+                created_at=time.time(),
+                ttl=ttl,
+            )
+        )
+
+        evictions = 0
+        if len(records) > self.max_entries:
+            records.sort(key=lambda record: record.created_at)
+            evictions = len(records) - self.max_entries
+            records = records[evictions:]
+
+        backend_evictions = await self._write_records(key, records, ttl=ttl)
+        evictions += backend_evictions
+        self.stats.sets += 1
+        cache_sets_total.labels(cache=self.name).inc()
+        if evictions:
+            self.stats.evictions += evictions
+            cache_evictions_total.labels(cache=self.name).inc(evictions)
+        self._update_ratios()
+
+    async def clear(self) -> None:
+        await self.registry.backend.clear_pattern(self._pattern())
+
+    def _live_records(self, value: Any) -> list[SemanticCacheRecord]:
+        if not isinstance(value, list):
+            return []
+        return [
+            record
+            for record in value
+            if isinstance(record, SemanticCacheRecord) and not record.is_expired
+        ]
+
+    async def _write_records(
+        self,
+        key: str,
+        records: list[SemanticCacheRecord],
+        ttl: int | None = None,
+    ) -> int:
+        ttl = ttl or self.ttl
+        entry = CacheEntry(value=records, created_at=time.time(), ttl=ttl)
+        return await self.registry.backend.set_entry(
+            key,
+            entry,
+            max_age=ttl + self.registry.stale_ttl_seconds,
+        )
+
+    def _record_request(self, result: str) -> None:
+        if result == "hit":
+            self.stats.hits += 1
+        elif result == "miss":
+            self.stats.misses += 1
+        elif result == "expired":
+            self.stats.expired += 1
+        cache_requests_total.labels(cache=self.name, result=result).inc()
+        self._update_ratios()
+
+    def _update_ratios(self) -> None:
+        cache_hit_ratio.labels(cache=self.name).set(self.stats.hit_rate)
+        cache_expired_ratio.labels(cache=self.name).set(self.stats.expired_rate)
+        cache_eviction_ratio.labels(cache=self.name).set(self.stats.eviction_rate)
+
+    def _pattern(self) -> str:
+        config = self.registry.config
+        return f"{config.key_prefix}:{config.env}:*:*:*:{self.name}:*"
+
+    def _index_key(self, context_hash: str) -> str:
+        scope = get_cache_scope()
+        config = self.registry.config
+        tenant_id = _key_part(scope.tenant_id)
+        user_id = _key_part(scope.user_id)
+        project_id = _key_part(scope.project_id)
+        return (
+            f"{config.key_prefix}:{config.env}:"
+            f"{tenant_id}:{user_id}:{project_id}:"
+            f"{self.name}:{self.version}:{context_hash}"
+        )
+
+
 class CacheRegistry:
     def __init__(self):
         self.config = CacheConfig(
@@ -290,7 +469,19 @@ class CacheRegistry:
             env="dev",
             key_prefix="nl2sql",
             fail_fast=False,
-            stale_ttl_seconds=3600,
+            stale_ttl_seconds=1800,
+            semantic_enabled=True,
+            semantic_threshold=0.94,
+            semantic_max_entries=1024,
+            semantic_ttl_seconds=7200,
+            ttl_embedding_seconds=86400,
+            ttl_llm_cleanup_seconds=7200,
+            ttl_llm_expand_seconds=7200,
+            ttl_qdrant_column_seconds=3600,
+            ttl_qdrant_metric_seconds=3600,
+            ttl_es_value_seconds=3600,
+            ttl_generate_sql_seconds=7200,
+            ttl_meta_mysql_seconds=7200,
             prompt_version="v1",
             schema_version="v1",
             embedding_model_version="v1",
@@ -337,7 +528,7 @@ class CacheRegistry:
     async def clear_names(self, names: list[str]) -> None:
         for name in names:
             cache = getattr(self, name, None)
-            if isinstance(cache, ScopedCache):
+            if isinstance(cache, ScopedCache | SemanticCache):
                 await cache.clear()
 
     async def clear_all(self) -> None:
@@ -346,7 +537,7 @@ class CacheRegistry:
     def all_stats(self) -> dict[str, dict]:
         result = {}
         for name, cache in self.__dict__.items():
-            if isinstance(cache, ScopedCache):
+            if isinstance(cache, ScopedCache | SemanticCache):
                 stats = cache.stats
                 result[name] = {
                     "backend": self.backend_name,
@@ -366,14 +557,22 @@ class CacheRegistry:
     def _create_caches(self) -> None:
         config = self.config
         prompt_schema_version = f"prompt:{config.prompt_version}:schema:{config.schema_version}"
-        self.embedding = ScopedCache("embedding", 3600, config.embedding_model_version, self)
-        self.llm_expand = ScopedCache("llm_expand", 1800, prompt_schema_version, self)
-        self.llm_cleanup = ScopedCache("llm_cleanup", 3600, prompt_schema_version, self)
-        self.qdrant_column = ScopedCache("qdrant_column", 300, config.index_version, self)
-        self.qdrant_metric = ScopedCache("qdrant_metric", 300, config.index_version, self)
-        self.es_value = ScopedCache("es_value", 300, config.index_version, self)
-        self.generate_sql = ScopedCache("generate_sql", 3600, prompt_schema_version, self)
-        self.meta_mysql = ScopedCache("meta_mysql", 3600, config.schema_version, self)
+        self.embedding = ScopedCache("embedding", config.ttl_embedding_seconds, config.embedding_model_version, self)
+        self.llm_expand = ScopedCache("llm_expand", config.ttl_llm_expand_seconds, prompt_schema_version, self)
+        self.llm_cleanup = ScopedCache("llm_cleanup", config.ttl_llm_cleanup_seconds, prompt_schema_version, self)
+        self.qdrant_column = ScopedCache("qdrant_column", config.ttl_qdrant_column_seconds, config.index_version, self)
+        self.qdrant_metric = ScopedCache("qdrant_metric", config.ttl_qdrant_metric_seconds, config.index_version, self)
+        self.es_value = ScopedCache("es_value", config.ttl_es_value_seconds, config.index_version, self)
+        self.generate_sql = ScopedCache("generate_sql", config.ttl_generate_sql_seconds, prompt_schema_version, self)
+        self.semantic_generate_sql = SemanticCache(
+            "semantic_generate_sql",
+            config.semantic_ttl_seconds,
+            prompt_schema_version,
+            self,
+            threshold=config.semantic_threshold,
+            max_entries=config.semantic_max_entries,
+        )
+        self.meta_mysql = ScopedCache("meta_mysql", config.ttl_meta_mysql_seconds, config.schema_version, self)
 
 
 def _key_part(value: str) -> str:
@@ -386,3 +585,14 @@ def cache_key_hash(*args: Any) -> str:
     except TypeError:
         raw = repr(args)
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def cosine_similarity(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right) or not left:
+        return -1.0
+    dot = sum(a * b for a, b in zip(left, right))
+    left_norm = sum(a * a for a in left) ** 0.5
+    right_norm = sum(b * b for b in right) ** 0.5
+    if left_norm == 0 or right_norm == 0:
+        return -1.0
+    return dot / (left_norm * right_norm)

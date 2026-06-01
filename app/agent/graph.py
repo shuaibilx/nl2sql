@@ -17,9 +17,10 @@ from app.agent.nodes.query_cleanup import query_cleanup  # [改进] 查询清洗
 from app.agent.nodes.filter_table import filter_table
 from app.agent.nodes.generate_sql import generate_sql
 from app.agent.nodes.merge_retrieved_info import merge_retrieved_info
+from app.agent.nodes.no_context_response import no_context_response
 from app.agent.nodes.recall_node import recall_node  # [改进] 统一召回节点，由 Send API 按类型派发
 from app.agent.nodes.validate_sql import validate_sql
-from app.agent import checkpoint as checkpoint_module  # [改进] 导入模块以引用可变全局变量，避免 from-import 值绑定问题
+from checkpoints import manager as checkpoint_module  # [改进] 导入模块以引用可变全局变量，避免 from-import 值绑定问题
 from app.agent.state import DataAgentState
 from app.core.log import logger
 from app.clients.embedding_client_manager import embedding_client_manager
@@ -55,6 +56,7 @@ graph_builder.add_node("extract_keywords", extract_keywords)
 graph_builder.add_node("expand_keywords", expand_keywords)  # [改进] 统一扩展三个维度关键词，1次LLM替代3次
 graph_builder.add_node("recall_node", recall_node)  # [改进] 统一召回节点，由 Send 动态派发 3 个并行实例
 graph_builder.add_node("merge_retrieved_info", merge_retrieved_info)
+graph_builder.add_node("no_context_response", no_context_response)
 graph_builder.add_node("filter_metric", filter_metric)
 graph_builder.add_node("filter_table", filter_table)
 graph_builder.add_node("add_extra_context", add_extra_context)
@@ -76,8 +78,16 @@ graph_builder.add_conditional_edges("expand_keywords", send_to_recalls)
 
 # [改进] 3 个并行召回分支完成后，统一汇入 merge_retrieved_info（reduce 阶段）
 graph_builder.add_edge("recall_node", "merge_retrieved_info")
-graph_builder.add_edge("merge_retrieved_info", "filter_table")
-graph_builder.add_edge("merge_retrieved_info", "filter_metric")
+
+
+def route_after_merge(state: DataAgentState):
+    if state.get("no_context"):
+        return "no_context_response"
+    return ["filter_table", "filter_metric"]
+
+
+graph_builder.add_conditional_edges("merge_retrieved_info", route_after_merge)
+graph_builder.add_edge("no_context_response", END)
 graph_builder.add_edge("filter_table", "add_extra_context")
 graph_builder.add_edge("filter_metric", "add_extra_context")
 graph_builder.add_edge("add_extra_context", "generate_sql")
@@ -113,20 +123,21 @@ def setup_graph() -> None:
     if checkpoint_module.checkpointer is None:
         raise RuntimeError("Checkpointer 尚未初始化，请先调用 init_checkpointer()")
     graph = graph_builder.compile(checkpointer=checkpoint_module.checkpointer)
-    logger.info("[改进] Graph 编译完成，已绑定 AsyncSqliteSaver checkpointer")
+    logger.info("[改进] Graph 编译完成，已绑定 LangGraph checkpointer")
 
 
 
 if __name__ == '__main__':
     async def t1():
-        from app.agent.checkpoint import init_checkpointer
+        from checkpoints.manager import init_checkpointer
+        from app.conf.app_config import app_config
         embedding_client_manager.init()
         qdrant_client_manager.init()
         es_client_manager.init()
         meta_mysql_client_manager.init()
         dw_mysql_client_manager.init()
         # [改进] 先初始化 checkpointer，再编译 graph
-        await init_checkpointer()
+        await init_checkpointer(app_config.checkpoint)
         setup_graph()
 
         async with meta_mysql_client_manager.session_factory() as meta_session, dw_mysql_client_manager.session_factory() as dw_session:

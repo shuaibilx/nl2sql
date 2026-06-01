@@ -23,8 +23,15 @@ logs/
 app/**/logs/
 eval/logs/
 eval/reports/
+eval/reports_old/
 *.log
-checkpoints/
+对话历史/
+checkpoints/*
+!checkpoints/
+!checkpoints/**/*.py
+checkpoints/*.db
+checkpoints/*.db-shm
+checkpoints/*.db-wal
 *.db
 *.db-shm
 *.db-wal

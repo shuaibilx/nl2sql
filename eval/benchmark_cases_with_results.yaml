@@ -1,0 +1,669 @@
+- id: B001
+  category: simple_aggregation
+  query: 统计全部销售总额
+  expected_sql: SELECT SUM(order_amount) AS result FROM fact_order
+  expected_result: 279159.5
+  expected_tables:
+  - fact_order
+  expected_columns:
+  - order_amount
+- id: B002
+  category: simple_aggregation
+  query: 统计订单笔数
+  expected_sql: SELECT COUNT(order_id) AS result FROM fact_order
+  expected_result: 115
+  expected_tables:
+  - fact_order
+  expected_columns:
+  - order_id
+- id: B003
+  category: simple_aggregation
+  query: 统计商品销售总件数
+  expected_sql: SELECT SUM(order_quantity) AS result FROM fact_order
+  expected_result: 622
+  expected_tables:
+  - fact_order
+  expected_columns:
+  - order_quantity
+- id: B004
+  category: simple_aggregation
+  query: 计算平均订单金额
+  expected_sql: SELECT AVG(order_amount) AS result FROM fact_order
+  expected_result: 2427.473913
+  expected_tables:
+  - fact_order
+  expected_columns:
+  - order_amount
+- id: B005
+  category: simple_aggregation
+  query: 查询最高单笔订单金额
+  expected_sql: SELECT MAX(order_amount) AS result FROM fact_order
+  expected_result: 9499.0
+  expected_tables:
+  - fact_order
+  expected_columns:
+  - order_amount
+- id: B006
+  category: simple_aggregation
+  query: 查询最低单笔订单金额
+  expected_sql: SELECT MIN(order_amount) AS result FROM fact_order
+  expected_result: 30.0
+  expected_tables:
+  - fact_order
+  expected_columns:
+  - order_amount
+- id: B007
+  category: simple_aggregation
+  query: 统计客户总数
+  expected_sql: SELECT COUNT(customer_id) AS result FROM dim_customer
+  expected_result: 20
+  expected_tables:
+  - dim_customer
+  expected_columns:
+  - customer_id
+- id: B008
+  category: simple_aggregation
+  query: 统计商品总数
+  expected_sql: SELECT COUNT(product_id) AS result FROM dim_product
+  expected_result: 15
+  expected_tables:
+  - dim_product
+  expected_columns:
+  - product_id
+- id: B009
+  category: simple_aggregation
+  query: 统计品牌数量
+  expected_sql: SELECT COUNT(DISTINCT brand) AS result FROM dim_product
+  expected_result: 15
+  expected_tables:
+  - dim_product
+  expected_columns:
+  - brand
+- id: B010
+  category: simple_aggregation
+  query: 统计覆盖的省份数量
+  expected_sql: SELECT COUNT(DISTINCT province) AS result FROM dim_region
+  expected_result: 6
+  expected_tables:
+  - dim_region
+  expected_columns:
+  - province
+- id: B011
+  category: time_filter
+  query: 查询2025年1月销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE d.year
+    = 2025 AND d.month = 1
+  expected_result: 109030.5
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - order_amount
+  - year
+  - month
+- id: B012
+  category: time_filter
+  query: 查询2025年2月销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE d.year
+    = 2025 AND d.month = 2
+  expected_result: 80009.0
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - order_amount
+  - year
+  - month
+- id: B013
+  category: time_filter
+  query: 查询2025年3月销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE d.year
+    = 2025 AND d.month = 3
+  expected_result: 90120.0
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - order_amount
+  - year
+  - month
+- id: B014
+  category: time_filter
+  query: 统计2025年第一季度销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE d.year
+    = 2025 AND d.quarter = 'Q1'
+  expected_result: 279159.5
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - order_amount
+  - year
+  - quarter
+- id: B015
+  category: time_filter
+  query: 统计2025年1月订单笔数
+  expected_sql: SELECT COUNT(f.order_id) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE d.year
+    = 2025 AND d.month = 1
+  expected_result: 40
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - order_id
+  - year
+  - month
+- id: B016
+  category: time_filter
+  query: 统计2025年3月销售件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE d.year
+    = 2025 AND d.month = 3
+  expected_result: 322
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - order_quantity
+  - year
+  - month
+- id: B017
+  category: product_filter
+  query: 统计苹果品牌销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id WHERE
+    p.brand = '苹果'
+  expected_result: 71992.0
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_amount
+  - brand
+- id: B018
+  category: product_filter
+  query: 统计华为品牌销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id WHERE
+    p.brand = '华为'
+  expected_result: 55992.0
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_amount
+  - brand
+- id: B019
+  category: product_filter
+  query: 统计三星品牌销售件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id
+    WHERE p.brand = '三星'
+  expected_result: 6
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_quantity
+  - brand
+- id: B020
+  category: product_filter
+  query: 统计苹果品牌订单笔数
+  expected_sql: SELECT COUNT(f.order_id) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id WHERE
+    p.brand = '苹果'
+  expected_result: 8
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_id
+  - brand
+- id: B021
+  category: product_filter
+  query: 统计华为手机数码商品销售件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id
+    WHERE p.brand = '华为' AND p.category = '手机数码'
+  expected_result: 8
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_quantity
+  - brand
+  - category
+- id: B022
+  category: product_filter
+  query: 统计家用电器品类销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id WHERE
+    p.category = '家用电器'
+  expected_result: 60788.0
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_amount
+  - category
+- id: B023
+  category: product_filter
+  query: 统计食品饮料品类销售件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id
+    WHERE p.category = '食品饮料'
+  expected_result: 246
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_quantity
+  - category
+- id: B024
+  category: product_filter
+  query: 统计鞋靴品类销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id WHERE
+    p.category = '鞋靴'
+  expected_result: 13188.0
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_amount
+  - category
+- id: B025
+  category: product_filter
+  query: 统计休闲零食品类订单笔数
+  expected_sql: SELECT COUNT(f.order_id) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id WHERE
+    p.category = '休闲零食'
+  expected_result: 21
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - order_id
+  - category
+- id: B026
+  category: region_filter
+  query: 统计浙江省销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id WHERE
+    r.province = '浙江省'
+  expected_result: 47163.0
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - order_amount
+  - province
+- id: B027
+  category: region_filter
+  query: 统计上海市销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id WHERE
+    r.province = '上海市'
+  expected_result: 60210.0
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - order_amount
+  - province
+- id: B028
+  category: region_filter
+  query: 统计华东大区销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id WHERE
+    r.region_name = '华东'
+  expected_result: 107373.0
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - order_amount
+  - region_name
+- id: B029
+  category: region_filter
+  query: 统计华北大区销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id WHERE
+    r.region_name = '华北'
+  expected_result: 41099.5
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - order_amount
+  - region_name
+- id: B030
+  category: region_filter
+  query: 统计华南大区销售件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id WHERE
+    r.region_name = '华南'
+  expected_result: 132
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - order_quantity
+  - region_name
+- id: B031
+  category: group_by
+  query: 按省份统计销售总额
+  expected_sql: SELECT r.province, SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id
+    GROUP BY r.province ORDER BY r.province
+  expected_result:
+  - - 上海市
+    - 60210.0
+  - - 北京市
+    - 41099.5
+  - - 四川省
+    - 31528.0
+  - - 广东省
+    - 70202.0
+  - - 浙江省
+    - 47163.0
+  - - 湖北省
+    - 28957.0
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - province
+  - order_amount
+- id: B032
+  category: group_by
+  query: 按大区统计销售总额
+  expected_sql: SELECT r.region_name, SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id
+    GROUP BY r.region_name ORDER BY r.region_name
+  expected_result:
+  - - 华东
+    - 107373.0
+  - - 华中
+    - 28957.0
+  - - 华北
+    - 41099.5
+  - - 华南
+    - 70202.0
+  - - 西南
+    - 31528.0
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - region_name
+  - order_amount
+- id: B033
+  category: top_n
+  query: 查询销售额最高的3个省份
+  expected_sql: SELECT r.province, SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id
+    GROUP BY r.province ORDER BY result DESC LIMIT 3
+  expected_result:
+  - - 广东省
+    - 70202.0
+  - - 上海市
+    - 60210.0
+  - - 浙江省
+    - 47163.0
+  expected_tables:
+  - fact_order
+  - dim_region
+  expected_columns:
+  - province
+  - order_amount
+- id: B034
+  category: customer_filter
+  query: 统计男性客户订单金额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_customer c ON f.customer_id = c.customer_id
+    WHERE c.gender = '男'
+  expected_result: 135370.5
+  expected_tables:
+  - fact_order
+  - dim_customer
+  expected_columns:
+  - order_amount
+  - gender
+- id: B035
+  category: customer_filter
+  query: 统计女性客户购买件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_customer c ON f.customer_id = c.customer_id
+    WHERE c.gender = '女'
+  expected_result: 339
+  expected_tables:
+  - fact_order
+  - dim_customer
+  expected_columns:
+  - order_quantity
+  - gender
+- id: B036
+  category: customer_filter
+  query: 统计铂金会员销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_customer c ON f.customer_id = c.customer_id
+    WHERE c.member_level = '铂金'
+  expected_result: 57679.0
+  expected_tables:
+  - fact_order
+  - dim_customer
+  expected_columns:
+  - order_amount
+  - member_level
+- id: B037
+  category: customer_filter
+  query: 统计黄金会员订单笔数
+  expected_sql: SELECT COUNT(f.order_id) AS result FROM fact_order f JOIN dim_customer c ON f.customer_id = c.customer_id
+    WHERE c.member_level = '黄金'
+  expected_result: 34
+  expected_tables:
+  - fact_order
+  - dim_customer
+  expected_columns:
+  - order_id
+  - member_level
+- id: B038
+  category: customer_filter
+  query: 计算白银会员平均订单金额
+  expected_sql: SELECT AVG(f.order_amount) AS result FROM fact_order f JOIN dim_customer c ON f.customer_id = c.customer_id
+    WHERE c.member_level = '白银'
+  expected_result: 2369.8
+  expected_tables:
+  - fact_order
+  - dim_customer
+  expected_columns:
+  - order_amount
+  - member_level
+- id: B039
+  category: compound_filter
+  query: 统计2025年2月苹果品牌销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id JOIN
+    dim_date d ON f.date_id = d.date_id WHERE p.brand = '苹果' AND d.year = 2025 AND d.month = 2
+  expected_result: 17998.0
+  expected_tables:
+  - fact_order
+  - dim_product
+  - dim_date
+  expected_columns:
+  - order_amount
+  - brand
+  - year
+  - month
+- id: B040
+  category: compound_filter
+  query: 统计2025年1月华为品牌销售件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id
+    JOIN dim_date d ON f.date_id = d.date_id WHERE p.brand = '华为' AND d.year = 2025 AND d.month = 1
+  expected_result: 3
+  expected_tables:
+  - fact_order
+  - dim_product
+  - dim_date
+  expected_columns:
+  - order_quantity
+  - brand
+  - year
+  - month
+- id: B041
+  category: compound_filter
+  query: 统计2025年2月华东大区销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id JOIN
+    dim_date d ON f.date_id = d.date_id WHERE r.region_name = '华东' AND d.year = 2025 AND d.month = 2
+  expected_result: 17508.0
+  expected_tables:
+  - fact_order
+  - dim_region
+  - dim_date
+  expected_columns:
+  - order_amount
+  - region_name
+  - year
+  - month
+- id: B042
+  category: compound_filter
+  query: 统计2025年3月华南大区订单笔数
+  expected_sql: SELECT COUNT(f.order_id) AS result FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id JOIN dim_date
+    d ON f.date_id = d.date_id WHERE r.region_name = '华南' AND d.year = 2025 AND d.month = 3
+  expected_result: 8
+  expected_tables:
+  - fact_order
+  - dim_region
+  - dim_date
+  expected_columns:
+  - order_id
+  - region_name
+  - year
+  - month
+- id: B043
+  category: compound_filter
+  query: 统计2025年第一季度食品饮料销售总额
+  expected_sql: SELECT SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id JOIN
+    dim_date d ON f.date_id = d.date_id WHERE p.category = '食品饮料' AND d.year = 2025 AND d.quarter = 'Q1'
+  expected_result: 2490.0
+  expected_tables:
+  - fact_order
+  - dim_product
+  - dim_date
+  expected_columns:
+  - order_amount
+  - category
+  - year
+  - quarter
+- id: B044
+  category: compound_filter
+  query: 统计2025年3月休闲零食销售件数
+  expected_sql: SELECT SUM(f.order_quantity) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id
+    JOIN dim_date d ON f.date_id = d.date_id WHERE p.category = '休闲零食' AND d.year = 2025 AND d.month = 3
+  expected_result: 156
+  expected_tables:
+  - fact_order
+  - dim_product
+  - dim_date
+  expected_columns:
+  - order_quantity
+  - category
+  - year
+  - month
+- id: B045
+  category: group_by
+  query: 按品类统计商品数量
+  expected_sql: SELECT category, COUNT(product_id) AS result FROM dim_product GROUP BY category ORDER BY category
+  expected_result:
+  - - 休闲零食
+    - 2
+  - - 家用电器
+    - 3
+  - - 手机数码
+    - 4
+  - - 服饰
+    - 2
+  - - 鞋靴
+    - 2
+  - - 食品饮料
+    - 2
+  expected_tables:
+  - dim_product
+  expected_columns:
+  - category
+  - product_id
+- id: B046
+  category: top_n
+  query: 查询销售额最高的5个品牌
+  expected_sql: SELECT p.brand, SUM(f.order_amount) AS result FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id
+    GROUP BY p.brand ORDER BY result DESC LIMIT 5
+  expected_result:
+  - - 苹果
+    - 71992.0
+  - - 三星
+    - 56994.0
+  - - 华为
+    - 55992.0
+  - - 戴森
+    - 32994.0
+  - - 美的
+    - 22400.0
+  expected_tables:
+  - fact_order
+  - dim_product
+  expected_columns:
+  - brand
+  - order_amount
+- id: B047
+  category: group_by
+  query: 按月份统计销售总额
+  expected_sql: SELECT d.month, SUM(f.order_amount) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE
+    d.year = 2025 GROUP BY d.month ORDER BY d.month
+  expected_result:
+  - - 1
+    - 109030.5
+  - - 2
+    - 80009.0
+  - - 3
+    - 90120.0
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - month
+  - year
+  - order_amount
+- id: B048
+  category: group_by
+  query: 按月份统计订单笔数
+  expected_sql: SELECT d.month, COUNT(f.order_id) AS result FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE
+    d.year = 2025 GROUP BY d.month ORDER BY d.month
+  expected_result:
+  - - 1
+    - 40
+  - - 2
+    - 33
+  - - 3
+    - 42
+  expected_tables:
+  - fact_order
+  - dim_date
+  expected_columns:
+  - month
+  - year
+  - order_id
+- id: B049
+  category: group_by
+  query: 按客户性别统计销售总额
+  expected_sql: SELECT c.gender, SUM(f.order_amount) AS result FROM fact_order f JOIN dim_customer c ON f.customer_id = c.customer_id
+    GROUP BY c.gender ORDER BY c.gender
+  expected_result:
+  - - 女
+    - 143789.0
+  - - 男
+    - 135370.5
+  expected_tables:
+  - fact_order
+  - dim_customer
+  expected_columns:
+  - gender
+  - order_amount
+- id: B050
+  category: group_by
+  query: 按会员等级统计销售总额
+  expected_sql: SELECT c.member_level, SUM(f.order_amount) AS result FROM fact_order f JOIN dim_customer c ON f.customer_id
+    = c.customer_id GROUP BY c.member_level ORDER BY c.member_level
+  expected_result:
+  - - 白银
+    - 71094.0
+  - - 铂金
+    - 57679.0
+  - - 青铜
+    - 50208.0
+  - - 黄金
+    - 100178.5
+  expected_tables:
+  - fact_order
+  - dim_customer
+  expected_columns:
+  - member_level
+  - order_amount

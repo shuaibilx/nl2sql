@@ -27,7 +27,7 @@ async def _call_llm_extend(query: str) -> dict:
     )
     output_parser = JsonOutputParser()
     result = await call_with_fallback(prompt, output_parser, {"query": query},
-                                      primary_llm=llm_flash, label="expand_keywords")
+                                      primary_llm=llm, label="expand_keywords")
     await caches.llm_expand.set(query, result)
     return result
 

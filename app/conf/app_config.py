@@ -70,6 +70,18 @@ class CacheConfig:
     key_prefix: str
     fail_fast: bool
     stale_ttl_seconds: int
+    semantic_enabled: bool
+    semantic_threshold: float
+    semantic_max_entries: int
+    semantic_ttl_seconds: int
+    ttl_embedding_seconds: int
+    ttl_llm_cleanup_seconds: int
+    ttl_llm_expand_seconds: int
+    ttl_qdrant_column_seconds: int
+    ttl_qdrant_metric_seconds: int
+    ttl_es_value_seconds: int
+    ttl_generate_sql_seconds: int
+    ttl_meta_mysql_seconds: int
     prompt_version: str
     schema_version: str
     embedding_model_version: str
@@ -83,6 +95,25 @@ class RedisConfig:
     db: int
     password: str
     socket_timeout: float
+
+
+@dataclass
+class CheckpointConfig:
+    backend: str
+    postgres_dsn: str
+    pool_min_size: int
+    pool_max_size: int
+    setup_on_start: bool
+    retention_days: int
+    sqlite_path: str
+    strict_msgpack: bool
+
+
+@dataclass
+class RecallConfig:
+    column_score_threshold: float
+    metric_score_threshold: float
+    value_score_threshold: float
 
 
 @dataclass
@@ -102,6 +133,8 @@ class AppConfig:
     llm_fallback: LLMConfig
     cache: CacheConfig
     redis: RedisConfig
+    checkpoint: CheckpointConfig
+    recall: RecallConfig
     monitoring: MonitoringConfig
 
 

@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.agent.checkpoint import close_checkpointer, init_checkpointer
 from app.agent.graph import setup_graph
 from app.clients.embedding_client_manager import embedding_client_manager
 from app.clients.es_client_manager import es_client_manager
@@ -13,6 +12,7 @@ from app.clients.mysql_client_manager import (
 from app.clients.qdrant_client_manager import qdrant_client_manager
 from app.conf.app_config import app_config
 from app.core.cache_registry import caches
+from checkpoints.manager import close_checkpointer, init_checkpointer
 
 
 @asynccontextmanager
@@ -23,11 +23,12 @@ async def lifespan(app: FastAPI):
     meta_mysql_client_manager.init()
     dw_mysql_client_manager.init()
     await caches.init(app_config.cache, app_config.redis)
-    await init_checkpointer()
+    await init_checkpointer(app_config.checkpoint)
     setup_graph()
     try:
         yield
     finally:
+        await embedding_client_manager.close()
         await qdrant_client_manager.close()
         await es_client_manager.close()
         await meta_mysql_client_manager.close()
